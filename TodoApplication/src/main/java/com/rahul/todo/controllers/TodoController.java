@@ -26,6 +26,7 @@ public class TodoController {
 
 	@RequestMapping(method = RequestMethod.GET, path = "/users/{userName}/todos")
 	public List<TodoDTO> getTodos(@PathVariable String userName) {
+		System.out.println(1==1L);
 		return todoService.findAll();
 
 	}
