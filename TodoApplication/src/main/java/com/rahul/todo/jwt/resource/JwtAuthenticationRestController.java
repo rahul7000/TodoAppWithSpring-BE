@@ -24,66 +24,81 @@ import org.springframework.web.bind.annotation.RestController;
 import com.rahul.todo.jwt.JwtTokenUtil;
 import com.rahul.todo.jwt.JwtUserDetails;
 
+/*
+ * Controller class to generate new JWT token or to get refresh token 
+ */
 @RestController
-@CrossOrigin(origins="http://localhost:4200")
+@CrossOrigin(origins = "http://localhost:4200")
 public class JwtAuthenticationRestController {
 
-  @Value("${jwt.http.request.header}")
-  private String tokenHeader;
+	@Value("${jwt.http.request.header}")
+	private String tokenHeader;
 
-  @Autowired
-  private AuthenticationManager authenticationManager;
+	@Autowired
+	private AuthenticationManager authenticationManager;
 
-  @Autowired
-  private JwtTokenUtil jwtTokenUtil;
+	@Autowired
+	private JwtTokenUtil jwtTokenUtil;
 
-  @Autowired
-  private UserDetailsService jwtInMemoryUserDetailsService;
+	@Autowired
+	private UserDetailsService jwtInMemoryUserDetailsService;
 
-  @RequestMapping(value = "${jwt.get.token.uri}", method = RequestMethod.POST)
-  public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtTokenRequest authenticationRequest)
-      throws AuthenticationException {
+	@RequestMapping(value = "${jwt.get.token.uri}", method = RequestMethod.POST)
+	public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtTokenRequest authenticationRequest)
+			throws AuthenticationException {
 
-    authenticate(authenticationRequest.getUsername(), authenticationRequest.getPassword());
+		System.out.println(
+				"JwtAuthenticationRestController.createAuthenticationToken()-request mapping for /authenticate");
 
-    final UserDetails userDetails = jwtInMemoryUserDetailsService.loadUserByUsername(authenticationRequest.getUsername());
+		authenticate(authenticationRequest.getUsername(), authenticationRequest.getPassword());
 
-    final String token = jwtTokenUtil.generateToken(userDetails);
+		final UserDetails userDetails = jwtInMemoryUserDetailsService
+				.loadUserByUsername(authenticationRequest.getUsername());
 
-    return ResponseEntity.ok(new JwtTokenResponse(token));
-  }
+		final String token = jwtTokenUtil.generateToken(userDetails);
 
-  @RequestMapping(value = "${jwt.refresh.token.uri}", method = RequestMethod.GET)
-  public ResponseEntity<?> refreshAndGetAuthenticationToken(HttpServletRequest request) {
-    String authToken = request.getHeader(tokenHeader);
-    final String token = authToken.substring(7);
-    String username = jwtTokenUtil.getUsernameFromToken(token);
-    JwtUserDetails user = (JwtUserDetails) jwtInMemoryUserDetailsService.loadUserByUsername(username);
+		return ResponseEntity.ok(new JwtTokenResponse(token));
+	}
 
-    if (jwtTokenUtil.canTokenBeRefreshed(token)) {
-      String refreshedToken = jwtTokenUtil.refreshToken(token);
-      return ResponseEntity.ok(new JwtTokenResponse(refreshedToken));
-    } else {
-      return ResponseEntity.badRequest().body(null);
-    }
-  }
+	@RequestMapping(value = "${jwt.refresh.token.uri}", method = RequestMethod.GET)
+	public ResponseEntity<?> refreshAndGetAuthenticationToken(HttpServletRequest request) {
+		System.out.println(
+				"JwtAuthenticationRestController.refreshAndGetAuthenticationToken()-request mapping for /refresh");
+		
+		String authToken = request.getHeader(tokenHeader);
+		final String token = authToken.substring(7);
+		String username = jwtTokenUtil.getUsernameFromToken(token);
+		JwtUserDetails user = (JwtUserDetails) jwtInMemoryUserDetailsService.loadUserByUsername(username);
 
-  @ExceptionHandler({ AuthenticationException.class })
-  public ResponseEntity<String> handleAuthenticationException(AuthenticationException e) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-  }
+		if (jwtTokenUtil.canTokenBeRefreshed(token)) {
+			String refreshedToken = jwtTokenUtil.refreshToken(token);
+			return ResponseEntity.ok(new JwtTokenResponse(refreshedToken));
+		
+		} else {
+			return ResponseEntity.badRequest().body(null);
+		}
+	}
 
-  private void authenticate(String username, String password) {
-    Objects.requireNonNull(username);
-    Objects.requireNonNull(password);
+	@ExceptionHandler({ AuthenticationException.class })
+	public ResponseEntity<String> handleAuthenticationException(AuthenticationException e) {
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+	}
 
-    try {
-      authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-    } catch (DisabledException e) {
-      throw new AuthenticationException("USER_DISABLED", e);
-    } catch (BadCredentialsException e) {
-      throw new AuthenticationException("INVALID_CREDENTIALS", e);
-    }
-  }
+	private void authenticate(String username, String password) {
+
+		Objects.requireNonNull(username);
+		Objects.requireNonNull(password);
+
+		System.out.println(
+				"JwtAuthenticationRestController.authenticate()-First check the authenticity of credentials to generate tokens");
+
+		try {
+			authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+
+		} catch (DisabledException e) {
+			throw new AuthenticationException("USER_DISABLED", e);
+		} catch (BadCredentialsException e) {
+			throw new AuthenticationException("INVALID_CREDENTIALS", e);
+		}
+	}
 }
-
